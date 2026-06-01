@@ -93,7 +93,7 @@ public abstract class TestBase {
 
     private void printBom(@Nonnull Bom bom) {
         final BomJsonGenerator bomGenerator =
-                BomGeneratorFactory.createJson(Version.VERSION_16, bom);
+                BomGeneratorFactory.createJson(Version.VERSION_17, bom);
         try {
             final String bomString = bomGenerator.toJsonString();
             LOGGER.info(bomString);

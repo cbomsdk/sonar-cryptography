@@ -94,7 +94,7 @@ import org.slf4j.LoggerFactory;
 
 public class CBOMOutputFile implements IOutputFile {
     private static final Logger LOGGER = LoggerFactory.getLogger(CBOMOutputFile.class);
-    private static final Version schema = Version.VERSION_16;
+    private static final Version schema = Version.VERSION_17;
 
     @Nonnull private final Map<String, Component> components;
     @Nonnull private final Map<String, Dependency> dependencies;
