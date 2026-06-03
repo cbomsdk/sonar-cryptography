@@ -14,7 +14,7 @@ Defining those rules as part of a SonarQube plugin allows us to easily integrate
 
 The project is composed of the following modules:
 - The plugin: `sonar-cryptography-plugin`
-- One module per supported language, like `java` and `python`
+- One module per supported language: `java`, `python`, `go`, `csharp`, and `cpp`
 - The detection engine: `engine`
 - Four other modules: `mapper`, `enricher`, `output` and `common`
 
@@ -155,12 +155,17 @@ We need to find these four types in the language's (Sonar) parser API. It is cru
 >[!NOTE]
 > If some of these classes are missing in the APIs of your language, you may create your own custom classes to try to patch this void, by investigating how these classes are used and trying to provide the same functionality. However, this has not been attempted yet and will probably result in significantly more work.
 
-To help you find these classes used to fill the four type parameters `R`, `T`, `S`, `P`, we provide the table below showing what these classes are for the languages we currently support (all of these classes are under the import path `org.sonar.plugins`):
+To help you find these classes used to fill the four type parameters `R`, `T`, `S`, `P`, we provide the table below showing what these classes are for the languages we currently support:
 
-|        | Rule (`R`)               | Tree (`T`)             | Symbol (`S`)                | Publisher (`P`)                   |
-|--------|------------------------|----------------------|---------------------------|---------------------------------|
-| **Java**   | java.api.**JavaCheck**     | java.api.tree.**Tree**   | java.api.semantic.**Symbol**  | java.api.**JavaFileScannerContext** |
-| **Python** | python.api.**PythonCheck** | python.api.tree.**Tree** | python.api.symbols.**Symbol** | python.api.**PythonVisitorContext** |
+|             | Rule (`R`)               | Tree (`T`)             | Symbol (`S`)                | Publisher (`P`)                   |
+|-------------|--------------------------|------------------------|-----------------------------|-----------------------------------|
+| **Java**    | `org.sonar.plugins.java.api.JavaCheck` | `org.sonar.plugins.java.api.tree.Tree` | `org.sonar.plugins.java.api.semantic.Symbol` | `org.sonar.plugins.java.api.JavaFileScannerContext` |
+| **Python**  | `org.sonar.plugins.python.api.PythonCheck` | `org.sonar.plugins.python.api.tree.Tree` | `org.sonar.plugins.python.api.symbols.Symbol` | `org.sonar.plugins.python.api.PythonVisitorContext` |
+| **Go**      | `org.sonar.plugins.go.api.checks.GoCheck` | `org.sonar.plugins.go.api.Tree` | `org.sonar.go.symbols.Symbol` | `com.ibm.engine.language.go.GoScanContext` |
+| **C#**      | `com.ibm.engine.language.csharp.CSharpCheck` | `com.ibm.engine.language.csharp.tree.CSharpTree` | `com.ibm.engine.language.csharp.CSharpSymbol` | `com.ibm.engine.language.csharp.CSharpScanContext` |
+| **C/C++**   | `org.sonar.cxx.squidbridge.checks.SquidCheck<?>` | `com.sonar.cxx.sslr.api.AstNode` | `org.sonar.cxx.squidbridge.api.Symbol` | `org.sonar.cxx.squidbridge.SquidAstVisitorContext<? extends Grammar>` |
+
+For C/C++, the project uses the community [sonar-cxx](https://github.com/SonarOpenCommunity/sonar-cxx) parser APIs. The `cpp` module registers `CxxCheckRegistrar` as a sonar-cxx custom rule repository, so a SonarQube instance must have sonar-cxx installed before C/C++ OpenSSL rules can run during an analysis.
 
 ### Implementing the language-specific parts of the engine
 

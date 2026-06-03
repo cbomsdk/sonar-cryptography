@@ -66,6 +66,11 @@ Copy the plugin (the JAR file from the [latest releases](https://github.com/cbom
 to `$SONARQUBE_HOME/extensions/plugins` and restart
 SonarQube ([more](https://docs.sonarqube.org/latest/setup-and-upgrade/install-a-plugin/)).
 
+For C/C++ scans, install the [sonar-cxx](https://github.com/SonarOpenCommunity/sonar-cxx)
+plugin in the same SonarQube instance. The cryptography plugin registers its C/C++ rule
+repository with sonar-cxx, so OpenSSL findings are produced only when sonar-cxx parses the
+C/C++ files.
+
 ## Using
 
 The plugin provides new inventory rules (Cbomkit Cryptography Repository) regarding the use of cryptography for
@@ -215,6 +220,10 @@ mvn spotless:apply
 # Check formatting
 mvn spotless:check
 ```
+
+The build produces the binary plugin at
+`sonar-cryptography-plugin/target/sonar-cryptography-plugin-2.0.0-SNAPSHOT.jar` and also copies
+it to `.SonarQube/plugins/` for the bundled Docker Compose SonarQube instance.
 
 <details>
 <summary><strong>Adding packages to sonar-go-to-slang (Go support)</strong></summary>

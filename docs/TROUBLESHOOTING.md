@@ -19,8 +19,10 @@ To do so, start by opening this repo and `git checkout` to the latest release br
 Open the [`docker-compose.yaml`](../docker-compose.yaml) file and check the `image` argument to make sure that it uses a version of SonarQube supported by our plugin.
 
 You then need to have a `.jar` plugin in the `.SonarQube/plugins/` directory. There are two options for this:
-- Easiest way: download the `.jar` file from the [latest releases](https://github.com/cbomkit/sonar-cryptography/releases) GitHub page and move it to this directory. In our case, it is named `sonar-cryptography-plugin-1.2.0.jar`.
-- Alternatively, you can build the plugin from source, as explained in the [Build](../CONTRIBUTING.md#build) paragraph of [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+- Easiest way: download the `.jar` file from the [latest releases](https://github.com/cbomkit/sonar-cryptography/releases) GitHub page and move it to this directory.
+- Alternatively, build the plugin from source with `mvn clean package`. The binary is generated at `sonar-cryptography-plugin/target/sonar-cryptography-plugin-2.0.0-SNAPSHOT.jar` and copied to `.SonarQube/plugins/`.
+
+For C/C++ OpenSSL scans, install the [sonar-cxx](https://github.com/SonarOpenCommunity/sonar-cxx) plugin in the same SonarQube instance. The cryptography plugin registers C/C++ rules with sonar-cxx, but sonar-cxx is still responsible for indexing and parsing `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hpp`, and related files.
 
 Now, you can run our plugin with SonarQube by following the [Run the Plugin with SonarQube](../CONTRIBUTING.md#run-the-plugin-with-sonarqube) paragraph of [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 If running `docker-compose up` does not work, you may try running `UID=${UID} docker-compose up` instead.
@@ -83,6 +85,8 @@ Click "Activate", which will open a popup window:
 Click on "Activate" again to add this rule to your "Cryptography" Quality Profile.
 You now have a correctly configured Quality Profile to use when you want to generate a CBOM.
 
+If you are testing C/C++ OpenSSL detection, create or update the Quality Profile for the C/C++ language provided by sonar-cxx, then activate the same "Cryptography Inventory" rule from the Sonar Cryptography repository for that language.
+
 ## Scanning a repo
 
 As a final step, let's test that our plugin correctly reports cryptography findings and generates a CBOM.
@@ -131,7 +135,7 @@ Click "Generate", then "Continue" (you don't have to save the value of your toke
 
 > [!NOTE]
 > At this point, make sure you have [Java](https://www.java.com/en/) and [Maven](https://maven.apache.org) installed.
-For reference, at the time of writing this guide, we use Java 17.0.11 and Maven 3.9.7.
+For reference, at the time of writing this guide, we build the plugin with Java 21 and Maven 3.8.7 or newer. The packaged plugin still declares Java 17 as the minimum runtime for SonarQube.
 
 Copy this code snippet and open a terminal in the directory of the `client-encryption-java` project you just cloned.
 Paste the code snippet in the terminal, but **replace the `verify` argument of the command by `package -DskipTests`** (we don't want to run the tests as they may fail in this case). In our case, the command is now:
@@ -148,5 +152,15 @@ If the analysis runs as expected, you should see the results in two ways:
 - In the `client-encryption-java` directory, a new file `cbom.json` must have been generated and should contain several components: ![alt text](images/cbom.png)
 
 ---
+
+## C/C++ OpenSSL checklist
+
+If Java, Python, Go, or C# scans work but C/C++ OpenSSL findings do not appear, check the following:
+
+- The SonarQube instance has both plugins installed: `sonar-cryptography-plugin-*.jar` and the sonar-cxx plugin.
+- The C/C++ project is associated with a C/C++ Quality Profile where "Cryptography Inventory" is active.
+- The scanner sees your C/C++ files. The cryptography plugin is configured for `cxx,cpp,c,h,hpp`, but sonar-cxx must still index the files during the scan.
+- The source uses OpenSSL APIs covered by the rules: EVP ciphers/digests/MACs/KDFs/key agreement/key generation/signatures, legacy OpenSSL APIs, SSL/TLS functions, or PRNG calls.
+- The generated `cbom.json` is checked in the scan working directory, not in the SonarQube server directory.
 
 If you did not succeed while following all the steps in this guide, please check previous GitHub [issues](https://github.com/cbomkit/sonar-cryptography/issues?q=is%3Aissue) to check if someone else ever had your problem, otherwise feel free to reach us by creating a new GitHub issue.
