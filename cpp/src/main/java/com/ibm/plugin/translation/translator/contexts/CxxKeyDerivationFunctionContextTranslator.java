@@ -81,12 +81,17 @@ public final class CxxKeyDerivationFunctionContextTranslator
                 case "HKDF-SHA384" -> Optional.of(new HKDF(new SHA2(384, detectionLocation)));
                 case "HKDF-SHA512" -> Optional.of(new HKDF(new SHA2(512, detectionLocation)));
                 case "HKDF-SHA3-256" -> Optional.of(new HKDF(new SHA3(256, detectionLocation)));
+                case "HKDF" -> Optional.of(new HKDF(detectionLocation));
 
                 // Scrypt
                 case "SCRYPT" -> Optional.of(new Scrypt(detectionLocation));
 
                 // TLS PRF
-                case "TLS1-PRF-MD5-SHA1", "TLS1-PRF-SHA256", "TLS1-PRF-SHA384", "TLS1-PRF-SHA512" ->
+                case "TLS1-PRF",
+                        "TLS1-PRF-MD5-SHA1",
+                        "TLS1-PRF-SHA256",
+                        "TLS1-PRF-SHA384",
+                        "TLS1-PRF-SHA512" ->
                         Optional.of(new PBKDF2(detectionLocation));
 
                 // TLS 1.3 KDF
@@ -179,6 +184,7 @@ public final class CxxKeyDerivationFunctionContextTranslator
 
                 // PBKDF2-HMAC (bare, without explicit digest)
                 case "PBKDF2-HMAC" -> Optional.of(new PBKDF2(detectionLocation));
+                case "PBKDF2" -> Optional.of(new PBKDF2(detectionLocation));
 
                 // HMAC-DRBG-KDF
                 case "HMAC-DRBG-KDF" ->

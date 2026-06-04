@@ -17,48 +17,40 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.plugin.rules.detection;
+package com.ibm.plugin.rules.detection.mbedtls;
 
 import com.ibm.engine.rule.IDetectionRule;
-import com.ibm.plugin.rules.detection.mbedtls.MbedTLSDetectionRules;
-import com.ibm.plugin.rules.detection.openhitls.OpenHiTLSDetectionRules;
-import com.ibm.plugin.rules.detection.openssl.OpenSSLDetectionRules;
+import com.ibm.plugin.rules.detection.mbedtls.cipher.MbedTLSCipher;
+import com.ibm.plugin.rules.detection.mbedtls.digest.MbedTLSDigest;
+import com.ibm.plugin.rules.detection.mbedtls.kdf.MbedTLSKdf;
+import com.ibm.plugin.rules.detection.mbedtls.keyagreement.MbedTLSKeyAgreement;
+import com.ibm.plugin.rules.detection.mbedtls.mac.MbedTLSMac;
+import com.ibm.plugin.rules.detection.mbedtls.rand.MbedTLSRand;
+import com.ibm.plugin.rules.detection.mbedtls.signature.MbedTLSSignature;
+import com.ibm.plugin.rules.detection.mbedtls.ssl.MbedTLSSsl;
 import com.sonar.cxx.sslr.api.AstNode;
 import java.util.List;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 
-/**
- * Registry of C++ cryptography detection rules.
- *
- * <p>This class aggregates all detection rules for C++ cryptographic libraries. Detection rules are
- * organized by library (e.g., OpenSSL, BoringSSL, libsodium).
- *
- * <p>To add new detection rules:
- *
- * <ol>
- *   <li>Create a new package under {@code rules.detection} for the library
- *   <li>Create detection rule classes following the pattern in Java module
- *   <li>Create a {@code *DetectionRules} class that returns all rules for the library
- *   <li>Add the rules to the stream in {@link #rules()}
- * </ol>
- */
-public final class CxxDetectionRules {
-    private CxxDetectionRules() {
+/** Aggregates mbedTLS and PSA Crypto detection rules for C/C++ analysis. */
+public final class MbedTLSDetectionRules {
+
+    private MbedTLSDetectionRules() {
         // private
     }
 
-    /**
-     * Returns all C++ cryptography detection rules.
-     *
-     * @return List of all detection rules
-     */
     @Nonnull
     public static List<IDetectionRule<AstNode>> rules() {
         return Stream.of(
-                        OpenSSLDetectionRules.rules().stream(),
-                        MbedTLSDetectionRules.rules().stream(),
-                        OpenHiTLSDetectionRules.rules().stream())
+                        MbedTLSDigest.rules().stream(),
+                        MbedTLSCipher.rules().stream(),
+                        MbedTLSMac.rules().stream(),
+                        MbedTLSKdf.rules().stream(),
+                        MbedTLSSignature.rules().stream(),
+                        MbedTLSKeyAgreement.rules().stream(),
+                        MbedTLSRand.rules().stream(),
+                        MbedTLSSsl.rules().stream())
                 .flatMap(i -> i)
                 .toList();
     }

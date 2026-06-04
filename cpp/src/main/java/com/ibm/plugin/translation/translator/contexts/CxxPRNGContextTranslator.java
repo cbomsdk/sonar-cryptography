@@ -89,6 +89,11 @@ public final class CxxPRNGContextTranslator implements IContextTranslation<AstNo
                                 new SHA(
                                         PseudorandomNumberGenerator.class,
                                         new SHA(detectionLocation)));
+                case "HASH-DRBG-SHA224" ->
+                        Optional.of(
+                                new SHA2(
+                                        PseudorandomNumberGenerator.class,
+                                        new SHA2(224, detectionLocation)));
                 case "HASH-DRBG-SHA256" ->
                         Optional.of(
                                 new SHA2(
@@ -111,6 +116,11 @@ public final class CxxPRNGContextTranslator implements IContextTranslation<AstNo
                                 new SHA(
                                         PseudorandomNumberGenerator.class,
                                         new SHA(detectionLocation)));
+                case "HMAC-DRBG-SHA224" ->
+                        Optional.of(
+                                new SHA2(
+                                        PseudorandomNumberGenerator.class,
+                                        new SHA2(224, detectionLocation)));
                 case "HMAC-DRBG-SHA256" ->
                         Optional.of(
                                 new SHA2(

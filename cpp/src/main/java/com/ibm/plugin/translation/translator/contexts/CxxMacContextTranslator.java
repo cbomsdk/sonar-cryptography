@@ -67,6 +67,8 @@ public final class CxxMacContextTranslator implements IContextTranslation<AstNod
 
         if (value instanceof ValueAction<AstNode>) {
             return switch (value.asString().toUpperCase().trim()) {
+                case "HMAC" -> Optional.of(new Algorithm("HMAC", Mac.class, detectionLocation));
+
                 // HMAC variants
                 case "HMAC-MD5" -> Optional.of(new HMAC(new MD5(detectionLocation)));
                 case "HMAC-SHA1" -> Optional.of(new HMAC(new SHA(detectionLocation)));
@@ -87,6 +89,11 @@ public final class CxxMacContextTranslator implements IContextTranslation<AstNod
                 case "HMAC-BLAKE2S" ->
                         Optional.of(new HMAC(new BLAKE2s(256, false, detectionLocation)));
                 case "HMAC-SM3" -> Optional.of(new HMAC(new SM3(detectionLocation)));
+
+                // Generic PSA MAC identifiers where the key handle supplies the concrete cipher.
+                case "CMAC" -> Optional.of(new Algorithm("CMAC", Mac.class, detectionLocation));
+                case "CBC-MAC" ->
+                        Optional.of(new Algorithm("CBC-MAC", Mac.class, detectionLocation));
 
                 // CMAC variants
                 case "CMAC-AES-128" -> Optional.of(new CMAC(new AES(128, detectionLocation)));

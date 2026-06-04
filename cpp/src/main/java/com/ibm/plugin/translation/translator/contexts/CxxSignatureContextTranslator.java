@@ -76,6 +76,9 @@ public final class CxxSignatureContextTranslator implements IContextTranslation<
             }
 
             // RSA Signatures (PKCS#1 v1.5)
+            if (algorithmName.equals("RSA")) {
+                return Optional.of(new RSA(Signature.class, detectionLocation));
+            }
             if (algorithmName.startsWith("RSA-")) {
                 RSA rsa = new RSA(Signature.class, detectionLocation);
                 if (algorithmName.contains("SHA1")) {
@@ -93,6 +96,9 @@ public final class CxxSignatureContextTranslator implements IContextTranslation<
             }
 
             // DSA Signatures
+            if (algorithmName.equals("DSA")) {
+                return Optional.of(new DSA(detectionLocation));
+            }
             if (algorithmName.startsWith("DSA-")) {
                 if (algorithmName.contains("SHA1")) {
                     return Optional.of(new DSA(new SHA(detectionLocation)));
@@ -109,6 +115,9 @@ public final class CxxSignatureContextTranslator implements IContextTranslation<
             }
 
             // ECDSA Signatures
+            if (algorithmName.equals("ECDSA")) {
+                return Optional.of(new ECDSA(detectionLocation));
+            }
             if (algorithmName.startsWith("ECDSA-")) {
                 ECDSA ecdsa = new ECDSA(detectionLocation);
                 if (algorithmName.contains("SHA1")) {
@@ -132,7 +141,9 @@ public final class CxxSignatureContextTranslator implements IContextTranslation<
             }
 
             // EdDSA Signatures
-            if (algorithmName.equals("ED25519") || algorithmName.equals("ED448")) {
+            if (algorithmName.equals("EDDSA")
+                    || algorithmName.equals("ED25519")
+                    || algorithmName.equals("ED448")) {
                 return Optional.of(new EdDSA(detectionLocation));
             }
 

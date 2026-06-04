@@ -40,6 +40,8 @@ import com.ibm.mapper.model.PasswordLength;
 import com.ibm.mapper.model.Protocol;
 import com.ibm.mapper.model.SaltLength;
 import com.ibm.mapper.model.collections.CipherSuiteCollection;
+import com.ibm.mapper.model.collections.TlsGroupCollection;
+import com.ibm.mapper.model.collections.TlsSignatureSchemeCollection;
 import com.ibm.mapper.model.functionality.Decapsulate;
 import com.ibm.mapper.model.functionality.Decrypt;
 import com.ibm.mapper.model.functionality.Digest;
@@ -87,6 +89,10 @@ import org.cyclonedx.model.Dependency;
 import org.cyclonedx.model.Metadata;
 import org.cyclonedx.model.OrganizationalEntity;
 import org.cyclonedx.model.Service;
+import org.cyclonedx.model.component.crypto.CryptoProperties;
+import org.cyclonedx.model.component.crypto.ProtocolProperties;
+import org.cyclonedx.model.component.crypto.RelatedCryptographicAsset;
+import org.cyclonedx.model.component.crypto.enums.ProtocolType;
 import org.cyclonedx.model.component.evidence.Occurrence;
 import org.cyclonedx.model.metadata.ToolInformation;
 import org.slf4j.Logger;
@@ -95,6 +101,7 @@ import org.slf4j.LoggerFactory;
 public class CBOMOutputFile implements IOutputFile {
     private static final Logger LOGGER = LoggerFactory.getLogger(CBOMOutputFile.class);
     private static final Version schema = Version.VERSION_17;
+    private static final String TLS_CONFIGURATION_CIPHER_SUITE = "TLS configuration";
 
     @Nonnull private final Map<String, Component> components;
     @Nonnull private final Map<String, Dependency> dependencies;
@@ -193,6 +200,8 @@ public class CBOMOutputFile implements IOutputFile {
                         .name(node)
                         .type(node)
                         .version(children.get(com.ibm.mapper.model.Version.class))
+                        .tlsGroups(children.get(TlsGroupCollection.class))
+                        .tlsSignatureSchemes(children.get(TlsSignatureSchemeCollection.class))
                         .cipherSuites(children.get(CipherSuiteCollection.class))
                         .occurrences(createOccurrenceForm(node.getDetectionContext()))
                         .build();
@@ -201,13 +210,6 @@ public class CBOMOutputFile implements IOutputFile {
             return;
         }
         addComponentAndDependencies(protocol, optionalId.get(), parentBomRef, node);
-
-        Dependency protocolDependency = dependencies.get(protocol.getBomRef());
-        if (protocolDependency != null) {
-            List<String> cryptoRefs =
-                    protocolDependency.getDependencies().stream().map(Dependency::getRef).toList();
-            protocol.getCryptoProperties().getProtocolProperties().setCryptoRefArray(cryptoRefs);
-        }
     }
 
     private void createCipherSuiteComponent(
@@ -218,6 +220,8 @@ public class CBOMOutputFile implements IOutputFile {
                         .name(tls)
                         .type(tls)
                         .version(null)
+                        .tlsGroups(null)
+                        .tlsSignatureSchemes(null)
                         .cipherSuites(new CipherSuiteCollection(List.of(node)))
                         .occurrences(createOccurrenceForm(node.getDetectionContext()))
                         .build();
@@ -258,6 +262,7 @@ public class CBOMOutputFile implements IOutputFile {
             @Nonnull String componentId,
             @Nullable String parentBomRef,
             @Nonnull INode node) {
+        String incomingBomRef = component.getBomRef();
         if (components.get(componentId) == null) {
             this.components.putIfAbsent(componentId, component);
         } else {
@@ -281,6 +286,8 @@ public class CBOMOutputFile implements IOutputFile {
                                                                         + " "))
                                         .toList();
                         c.getEvidence().setOccurrences(merge);
+                        mergeCryptoProperties(c, component);
+                        mergeDependencies(incomingBomRef, c.getBomRef());
                         return c;
                     });
         }
@@ -305,6 +312,188 @@ public class CBOMOutputFile implements IOutputFile {
         if (node.hasChildren()) {
             add(componentIdentify.getBomRef(), node.getChildren().values().stream().toList());
         }
+    }
+
+    private void mergeDependencies(@Nonnull String incomingBomRef, @Nonnull String existingBomRef) {
+        if (incomingBomRef.equals(existingBomRef)) {
+            return;
+        }
+        Dependency incomingDependency = dependencies.remove(incomingBomRef);
+        if (incomingDependency == null) {
+            return;
+        }
+        Dependency existingDependency =
+                dependencies.computeIfAbsent(existingBomRef, Dependency::new);
+        incomingDependency.getDependencies().forEach(existingDependency::addDependency);
+    }
+
+    private void mergeCryptoProperties(
+            @Nonnull Component existingComponent, @Nonnull Component newComponent) {
+        CryptoProperties existing = existingComponent.getCryptoProperties();
+        CryptoProperties incoming = newComponent.getCryptoProperties();
+        if (incoming == null) {
+            return;
+        }
+        if (existing == null) {
+            existingComponent.setCryptoProperties(incoming);
+            return;
+        }
+        mergeProtocolProperties(existing.getProtocolProperties(), incoming.getProtocolProperties());
+    }
+
+    private void mergeProtocolProperties(
+            @Nullable ProtocolProperties existing, @Nullable ProtocolProperties incoming) {
+        if (existing == null || incoming == null) {
+            return;
+        }
+        if (shouldReplaceProtocolType(existing.getType(), incoming.getType())) {
+            existing.setType(incoming.getType());
+        }
+        if (incoming.getVersion() != null) {
+            existing.setVersion(incoming.getVersion());
+        }
+        if (existing.getCipherSuites() == null) {
+            existing.setCipherSuites(incoming.getCipherSuites());
+        } else if (incoming.getCipherSuites() != null) {
+            existing.setCipherSuites(
+                    mergeCipherSuites(existing.getCipherSuites(), incoming.getCipherSuites()));
+        }
+        if (existing.getCryptoRefArray() == null) {
+            existing.setCryptoRefArray(incoming.getCryptoRefArray());
+        } else if (incoming.getCryptoRefArray() != null) {
+            List<String> mergedCryptoRefs = new ArrayList<>(existing.getCryptoRefArray());
+            incoming.getCryptoRefArray().stream()
+                    .filter(cryptoRef -> !mergedCryptoRefs.contains(cryptoRef))
+                    .forEach(mergedCryptoRefs::add);
+            existing.setCryptoRefArray(mergedCryptoRefs);
+        }
+        if (existing.getRelatedCryptographicAssets() == null) {
+            existing.setRelatedCryptographicAssets(incoming.getRelatedCryptographicAssets());
+        } else if (incoming.getRelatedCryptographicAssets() != null) {
+            List<RelatedCryptographicAsset> mergedRelatedAssets =
+                    new ArrayList<>(existing.getRelatedCryptographicAssets());
+            incoming.getRelatedCryptographicAssets().stream()
+                    .filter(relatedAsset -> !mergedRelatedAssets.contains(relatedAsset))
+                    .forEach(mergedRelatedAssets::add);
+            existing.setRelatedCryptographicAssets(mergedRelatedAssets);
+        }
+        if (existing.getIkev2TransformTypes() == null) {
+            existing.setIkev2TransformTypes(incoming.getIkev2TransformTypes());
+        }
+    }
+
+    private boolean shouldReplaceProtocolType(
+            @Nullable ProtocolType existing, @Nullable ProtocolType incoming) {
+        return incoming != null
+                && (existing == null
+                        || existing == ProtocolType.UNKNOWN
+                        || existing == ProtocolType.OTHER)
+                && incoming != ProtocolType.UNKNOWN
+                && incoming != ProtocolType.OTHER;
+    }
+
+    @Nonnull
+    private List<org.cyclonedx.model.component.crypto.CipherSuite> mergeCipherSuites(
+            @Nonnull List<org.cyclonedx.model.component.crypto.CipherSuite> existing,
+            @Nonnull List<org.cyclonedx.model.component.crypto.CipherSuite> incoming) {
+        final List<org.cyclonedx.model.component.crypto.CipherSuite> existingConcreteSuites =
+                existing.stream().filter(cipherSuite -> !isTlsConfiguration(cipherSuite)).toList();
+        final List<org.cyclonedx.model.component.crypto.CipherSuite> incomingConcreteSuites =
+                incoming.stream().filter(cipherSuite -> !isTlsConfiguration(cipherSuite)).toList();
+        final boolean existingHasExplicitCipherSuites =
+                existingConcreteSuites.stream().anyMatch(this::hasAlgorithmReferences);
+        final boolean incomingHasExplicitCipherSuites =
+                incomingConcreteSuites.stream().anyMatch(this::hasAlgorithmReferences);
+
+        final List<org.cyclonedx.model.component.crypto.CipherSuite> mergedCipherSuites =
+                new ArrayList<>();
+        if (incomingHasExplicitCipherSuites) {
+            existingConcreteSuites.stream()
+                    .filter(this::hasAlgorithmReferences)
+                    .forEach(
+                            cipherSuite ->
+                                    appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+            incomingConcreteSuites.forEach(
+                    cipherSuite -> appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+        } else if (existingHasExplicitCipherSuites) {
+            existingConcreteSuites.forEach(
+                    cipherSuite -> appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+        } else {
+            existingConcreteSuites.forEach(
+                    cipherSuite -> appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+            incomingConcreteSuites.forEach(
+                    cipherSuite -> appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+        }
+
+        mergeTlsConfigurationCipherSuite(existing, incoming)
+                .ifPresent(cipherSuite -> appendUniqueCipherSuite(mergedCipherSuites, cipherSuite));
+        return mergedCipherSuites;
+    }
+
+    private boolean isTlsConfiguration(
+            @Nonnull org.cyclonedx.model.component.crypto.CipherSuite cipherSuite) {
+        return TLS_CONFIGURATION_CIPHER_SUITE.equals(cipherSuite.getName());
+    }
+
+    private boolean hasAlgorithmReferences(
+            @Nonnull org.cyclonedx.model.component.crypto.CipherSuite cipherSuite) {
+        return cipherSuite.getAlgorithms() != null && !cipherSuite.getAlgorithms().isEmpty();
+    }
+
+    private void appendUniqueCipherSuite(
+            @Nonnull List<org.cyclonedx.model.component.crypto.CipherSuite> cipherSuites,
+            @Nonnull org.cyclonedx.model.component.crypto.CipherSuite cipherSuite) {
+        if (!cipherSuites.contains(cipherSuite)) {
+            cipherSuites.add(cipherSuite);
+        }
+    }
+
+    @Nonnull
+    private Optional<org.cyclonedx.model.component.crypto.CipherSuite>
+            mergeTlsConfigurationCipherSuite(
+                    @Nonnull List<org.cyclonedx.model.component.crypto.CipherSuite> existing,
+                    @Nonnull List<org.cyclonedx.model.component.crypto.CipherSuite> incoming) {
+        final Optional<org.cyclonedx.model.component.crypto.CipherSuite> existingConfiguration =
+                existing.stream().filter(this::isTlsConfiguration).findFirst();
+        final Optional<org.cyclonedx.model.component.crypto.CipherSuite> incomingConfiguration =
+                incoming.stream().filter(this::isTlsConfiguration).findFirst();
+        if (existingConfiguration.isEmpty()) {
+            return incomingConfiguration;
+        }
+        if (incomingConfiguration.isEmpty()) {
+            return existingConfiguration;
+        }
+
+        final org.cyclonedx.model.component.crypto.CipherSuite mergedConfiguration =
+                new org.cyclonedx.model.component.crypto.CipherSuite();
+        mergedConfiguration.setName(TLS_CONFIGURATION_CIPHER_SUITE);
+        selectConfiguredValues(
+                        existingConfiguration.get().getTlsGroups(),
+                        incomingConfiguration.get().getTlsGroups())
+                .ifPresent(mergedConfiguration::setTlsGroups);
+        selectConfiguredValues(
+                        existingConfiguration.get().getTlsSignatureSchemes(),
+                        incomingConfiguration.get().getTlsSignatureSchemes())
+                .ifPresent(mergedConfiguration::setTlsSignatureSchemes);
+        return Optional.of(mergedConfiguration);
+    }
+
+    @Nonnull
+    private Optional<List<String>> selectConfiguredValues(
+            @Nullable List<String> existing, @Nullable List<String> incoming) {
+        if (existing == null || existing.isEmpty()) {
+            return Optional.ofNullable(incoming).filter(values -> !values.isEmpty());
+        }
+        if (incoming == null || incoming.isEmpty()) {
+            return Optional.of(existing);
+        }
+        if (existing.containsAll(incoming)) {
+            return Optional.of(incoming);
+        }
+        if (incoming.containsAll(existing)) {
+            return Optional.of(existing);
+        }
+        return Optional.of(incoming);
     }
 
     @Nonnull

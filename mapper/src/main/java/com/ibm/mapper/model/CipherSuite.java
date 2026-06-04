@@ -21,6 +21,8 @@ package com.ibm.mapper.model;
 
 import com.ibm.mapper.model.collections.AssetCollection;
 import com.ibm.mapper.model.collections.IdentifierCollection;
+import com.ibm.mapper.model.collections.TlsGroupCollection;
+import com.ibm.mapper.model.collections.TlsSignatureSchemeCollection;
 import com.ibm.mapper.utils.DetectionLocation;
 import java.util.HashMap;
 import java.util.Map;
@@ -87,6 +89,24 @@ public final class CipherSuite implements IAsset {
             return Optional.empty();
         }
         return Optional.of((IdentifierCollection) node);
+    }
+
+    @Nonnull
+    public Optional<TlsGroupCollection> getTlsGroupCollection() {
+        INode node = this.getChildren().get(TlsGroupCollection.class);
+        if (node == null) {
+            return Optional.empty();
+        }
+        return Optional.of((TlsGroupCollection) node);
+    }
+
+    @Nonnull
+    public Optional<TlsSignatureSchemeCollection> getTlsSignatureSchemeCollection() {
+        INode node = this.getChildren().get(TlsSignatureSchemeCollection.class);
+        if (node == null) {
+            return Optional.empty();
+        }
+        return Optional.of((TlsSignatureSchemeCollection) node);
     }
 
     @Nonnull

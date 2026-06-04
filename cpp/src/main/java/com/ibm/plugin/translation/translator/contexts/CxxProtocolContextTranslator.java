@@ -30,21 +30,25 @@ import com.ibm.mapper.mapper.ssl.CipherSuiteMapper;
 import com.ibm.mapper.mapper.ssl.SSLVersionMapper;
 import com.ibm.mapper.model.INode;
 import com.ibm.mapper.model.Protocol;
+import com.ibm.mapper.model.TlsGroup;
+import com.ibm.mapper.model.TlsSignatureScheme;
 import com.ibm.mapper.model.Unknown;
 import com.ibm.mapper.model.Version;
+import com.ibm.mapper.model.collections.AssetCollection;
+import com.ibm.mapper.model.collections.CipherSuiteCollection;
+import com.ibm.mapper.model.collections.TlsGroupCollection;
+import com.ibm.mapper.model.collections.TlsSignatureSchemeCollection;
 import com.ibm.mapper.model.protocol.TLS;
 import com.ibm.mapper.utils.DetectionLocation;
+import com.ibm.plugin.rules.detection.TlsConfigurationAction;
 import com.ibm.plugin.rules.detection.openssl.ssl.OpenSSLVersionValue;
 import com.sonar.cxx.sslr.api.AstNode;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 
-/**
- * Translates OpenSSL libssl protocol contexts to CBOM model nodes.
- *
- * <p>Handles SSL/TLS protocol detection including version strings (TLS 1.2, TLS 1.3, DTLS, QUIC,
- * etc.) and cipher suite configurations.
- */
+/** Translates C/C++ SSL/TLS protocol contexts to CBOM model nodes. */
 public final class CxxProtocolContextTranslator implements IContextTranslation<AstNode> {
 
     @Nonnull
@@ -54,10 +58,6 @@ public final class CxxProtocolContextTranslator implements IContextTranslation<A
             @Nonnull IValue<AstNode> value,
             @Nonnull IDetectionContext detectionContext,
             @Nonnull DetectionLocation detectionLocation) {
-        if (!bundleIdentifier.getIdentifier().equals("OpenSSL")) {
-            return Optional.empty();
-        }
-
         final ProtocolContext.Kind kind = ((ProtocolContext) detectionContext).kind();
 
         // Handle OpenSSLVersionValue (custom value type with parameter extraction)
@@ -76,7 +76,9 @@ public final class CxxProtocolContextTranslator implements IContextTranslation<A
             return Optional.of(new Protocol(versionString, detectionLocation));
         }
 
-        if (value instanceof com.ibm.engine.model.Protocol<AstNode> protocol) {
+        if (value instanceof TlsConfigurationAction tlsConfiguration) {
+            return Optional.of(toTlsNode(tlsConfiguration, detectionLocation));
+        } else if (value instanceof com.ibm.engine.model.Protocol<AstNode> protocol) {
             return switch (kind) {
                 case TLS ->
                         Optional.of(protocol)
@@ -117,13 +119,78 @@ public final class CxxProtocolContextTranslator implements IContextTranslation<A
                 if (parsedVersion.isPresent()) {
                     return Optional.of(new TLS(parsedVersion.get()));
                 }
-                // If not a version string, treat as generic protocol
-                return Optional.of(new Protocol(stringValue, detectionLocation));
+                return Optional.of(new TLS(detectionLocation));
             }
             // For non-TLS protocols, create generic Protocol node
             return Optional.of(new Protocol(stringValue, detectionLocation));
         }
 
         return Optional.of(new Unknown(detectionLocation));
+    }
+
+    @Nonnull
+    private static TLS toTlsNode(
+            @Nonnull TlsConfigurationAction tlsConfiguration,
+            @Nonnull DetectionLocation detectionLocation) {
+        TLS tls = new TLS(detectionLocation);
+        if (tlsConfiguration.tlsVersion() != null) {
+            tls.put(new Version(tlsConfiguration.tlsVersion(), detectionLocation));
+        }
+        List<com.ibm.mapper.model.CipherSuite> cipherSuites =
+                tlsConfiguration.cipherSuites().stream()
+                        .map(
+                                cipherSuiteName ->
+                                        new CipherSuiteMapper()
+                                                .parse(cipherSuiteName, detectionLocation))
+                        .flatMap(Optional::stream)
+                        .filter(com.ibm.mapper.model.CipherSuite.class::isInstance)
+                        .map(com.ibm.mapper.model.CipherSuite.class::cast)
+                        .toList();
+
+        if (!tlsConfiguration.includeCipherSuiteAlgorithms()) {
+            cipherSuites.forEach(
+                    cipherSuite -> cipherSuite.removeChildOfType(AssetCollection.class));
+        }
+
+        if (!tlsConfiguration.tlsGroups().isEmpty()
+                || !tlsConfiguration.tlsSignatureSchemes().isEmpty()) {
+            com.ibm.mapper.model.CipherSuite configuration =
+                    new com.ibm.mapper.model.CipherSuite("TLS configuration", detectionLocation);
+            List<com.ibm.mapper.model.CipherSuite> configuredCipherSuites =
+                    new ArrayList<>(cipherSuites);
+            configuredCipherSuites.add(
+                    withTlsConfiguration(configuration, tlsConfiguration, detectionLocation));
+            cipherSuites = configuredCipherSuites;
+        }
+
+        if (!cipherSuites.isEmpty()) {
+            tls.put(new CipherSuiteCollection(cipherSuites));
+        }
+        return tls;
+    }
+
+    @Nonnull
+    private static com.ibm.mapper.model.CipherSuite withTlsConfiguration(
+            @Nonnull com.ibm.mapper.model.CipherSuite cipherSuite,
+            @Nonnull TlsConfigurationAction tlsConfiguration,
+            @Nonnull DetectionLocation detectionLocation) {
+        if (!tlsConfiguration.tlsGroups().isEmpty()) {
+            cipherSuite.put(
+                    new TlsGroupCollection(
+                            tlsConfiguration.tlsGroups().stream()
+                                    .map(group -> new TlsGroup(group, detectionLocation))
+                                    .toList()));
+        }
+        if (!tlsConfiguration.tlsSignatureSchemes().isEmpty()) {
+            cipherSuite.put(
+                    new TlsSignatureSchemeCollection(
+                            tlsConfiguration.tlsSignatureSchemes().stream()
+                                    .map(
+                                            signatureScheme ->
+                                                    new TlsSignatureScheme(
+                                                            signatureScheme, detectionLocation))
+                                    .toList()));
+        }
+        return cipherSuite;
     }
 }

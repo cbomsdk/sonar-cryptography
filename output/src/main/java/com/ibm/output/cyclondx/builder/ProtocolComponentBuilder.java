@@ -24,7 +24,11 @@ import com.ibm.mapper.model.CipherSuite;
 import com.ibm.mapper.model.INode;
 import com.ibm.mapper.model.Identifier;
 import com.ibm.mapper.model.Protocol;
+import com.ibm.mapper.model.TlsGroup;
+import com.ibm.mapper.model.TlsSignatureScheme;
 import com.ibm.mapper.model.collections.CipherSuiteCollection;
+import com.ibm.mapper.model.collections.TlsGroupCollection;
+import com.ibm.mapper.model.collections.TlsSignatureSchemeCollection;
 import com.ibm.mapper.model.protocol.IKE;
 import com.ibm.mapper.model.protocol.IPSec;
 import com.ibm.mapper.model.protocol.TLS;
@@ -43,10 +47,14 @@ import org.cyclonedx.model.component.crypto.enums.ProtocolType;
 import org.cyclonedx.model.component.evidence.Occurrence;
 
 public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
+    private static final String TLS_CONFIGURATION_CIPHER_SUITE = "TLS configuration";
+
     @Nonnull private final Component component;
     @Nonnull private final CryptoProperties cryptoProperties;
     @Nonnull private final ProtocolProperties protocolProperties;
     @Nonnull private final BiFunction<String, Algorithm, String> algorithmComponentBuilder;
+    @Nonnull private final List<String> tlsGroups;
+    @Nonnull private final List<String> tlsSignatureSchemes;
 
     protected ProtocolComponentBuilder(
             @Nonnull BiFunction<String, Algorithm, String> algorithmComponentBuilder) {
@@ -55,17 +63,23 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
         this.cryptoProperties = new CryptoProperties();
         this.protocolProperties = new ProtocolProperties();
         this.algorithmComponentBuilder = algorithmComponentBuilder;
+        this.tlsGroups = new ArrayList<>();
+        this.tlsSignatureSchemes = new ArrayList<>();
     }
 
     private ProtocolComponentBuilder(
             @Nonnull Component component,
             @Nonnull CryptoProperties cryptoProperties,
             @Nonnull ProtocolProperties protocolProperties,
-            @Nonnull BiFunction<String, Algorithm, String> algorithmComponentBuilder) {
+            @Nonnull BiFunction<String, Algorithm, String> algorithmComponentBuilder,
+            @Nonnull List<String> tlsGroups,
+            @Nonnull List<String> tlsSignatureSchemes) {
         this.component = component;
         this.cryptoProperties = cryptoProperties;
         this.protocolProperties = protocolProperties;
         this.algorithmComponentBuilder = algorithmComponentBuilder;
+        this.tlsGroups = tlsGroups;
+        this.tlsSignatureSchemes = tlsSignatureSchemes;
     }
 
     @Nonnull
@@ -79,12 +93,22 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
     public IProtocolComponentBuilder name(@Nullable Protocol name) {
         if (name == null) {
             return new ProtocolComponentBuilder(
-                    component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                    component,
+                    cryptoProperties,
+                    protocolProperties,
+                    algorithmComponentBuilder,
+                    tlsGroups,
+                    tlsSignatureSchemes);
         }
 
         this.component.setName(name.asString());
         return new ProtocolComponentBuilder(
-                component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
     }
 
     @Nonnull
@@ -93,7 +117,12 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
         if (type == null) {
             protocolProperties.setType(ProtocolType.UNKNOWN);
             return new ProtocolComponentBuilder(
-                    component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                    component,
+                    cryptoProperties,
+                    protocolProperties,
+                    algorithmComponentBuilder,
+                    tlsGroups,
+                    tlsSignatureSchemes);
         }
 
         if (type instanceof TLS) {
@@ -107,7 +136,12 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
         }
 
         return new ProtocolComponentBuilder(
-                component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
     }
 
     @Nonnull
@@ -115,19 +149,71 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
     public IProtocolComponentBuilder version(@Nullable INode version) {
         if (version == null) {
             return new ProtocolComponentBuilder(
-                    component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                    component,
+                    cryptoProperties,
+                    protocolProperties,
+                    algorithmComponentBuilder,
+                    tlsGroups,
+                    tlsSignatureSchemes);
         }
         protocolProperties.setVersion(version.asString());
         return new ProtocolComponentBuilder(
-                component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
+    }
+
+    @Nonnull
+    @Override
+    public IProtocolComponentBuilder tlsGroups(@Nullable INode node) {
+        if (node instanceof TlsGroupCollection tlsGroupCollection) {
+            this.tlsGroups.addAll(
+                    tlsGroupCollection.getCollection().stream().map(TlsGroup::getValue).toList());
+        }
+        return new ProtocolComponentBuilder(
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
+    }
+
+    @Nonnull
+    @Override
+    public IProtocolComponentBuilder tlsSignatureSchemes(@Nullable INode node) {
+        if (node instanceof TlsSignatureSchemeCollection tlsSignatureSchemeCollection) {
+            this.tlsSignatureSchemes.addAll(
+                    tlsSignatureSchemeCollection.getCollection().stream()
+                            .map(TlsSignatureScheme::getValue)
+                            .toList());
+        }
+        return new ProtocolComponentBuilder(
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
     }
 
     @Nonnull
     @Override
     public IProtocolComponentBuilder cipherSuites(@Nullable INode node) {
         if (node == null) {
+            if (!tlsGroups.isEmpty() || !tlsSignatureSchemes.isEmpty()) {
+                protocolProperties.setCipherSuites(List.of(createTlsConfigurationCipherSuite()));
+            }
             return new ProtocolComponentBuilder(
-                    component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                    component,
+                    cryptoProperties,
+                    protocolProperties,
+                    algorithmComponentBuilder,
+                    tlsGroups,
+                    tlsSignatureSchemes);
         }
 
         if (node instanceof CipherSuiteCollection cipherSuiteCollection) {
@@ -165,13 +251,58 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
                                     }
                                     suite.setIdentifiers(identifiers);
                                 });
+                cipherSuite
+                        .getTlsGroupCollection()
+                        .map(
+                                groupCollection ->
+                                        groupCollection.getCollection().stream()
+                                                .map(TlsGroup::getValue)
+                                                .toList())
+                        .filter(suiteTlsGroups -> !suiteTlsGroups.isEmpty())
+                        .ifPresent(suite::setTlsGroups);
+                cipherSuite
+                        .getTlsSignatureSchemeCollection()
+                        .map(
+                                signatureSchemeCollection ->
+                                        signatureSchemeCollection.getCollection().stream()
+                                                .map(TlsSignatureScheme::getValue)
+                                                .toList())
+                        .filter(suiteTlsSignatureSchemes -> !suiteTlsSignatureSchemes.isEmpty())
+                        .ifPresent(suite::setTlsSignatureSchemes);
                 suites.add(suite);
+            }
+            if ((!tlsGroups.isEmpty() || !tlsSignatureSchemes.isEmpty())
+                    && suites.stream()
+                            .noneMatch(
+                                    suite ->
+                                            TLS_CONFIGURATION_CIPHER_SUITE.equals(
+                                                    suite.getName()))) {
+                suites.add(createTlsConfigurationCipherSuite());
             }
             protocolProperties.setCipherSuites(suites);
         }
 
         return new ProtocolComponentBuilder(
-                component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
+    }
+
+    @Nonnull
+    private org.cyclonedx.model.component.crypto.CipherSuite createTlsConfigurationCipherSuite() {
+        final org.cyclonedx.model.component.crypto.CipherSuite configuration =
+                new org.cyclonedx.model.component.crypto.CipherSuite();
+        configuration.setName(TLS_CONFIGURATION_CIPHER_SUITE);
+        if (!tlsGroups.isEmpty()) {
+            configuration.setTlsGroups(tlsGroups);
+        }
+        if (!tlsSignatureSchemes.isEmpty()) {
+            configuration.setTlsSignatureSchemes(tlsSignatureSchemes);
+        }
+        return configuration;
     }
 
     @Nonnull
@@ -179,13 +310,23 @@ public class ProtocolComponentBuilder implements IProtocolComponentBuilder {
     public IProtocolComponentBuilder occurrences(@Nullable Occurrence... occurrences) {
         if (occurrences == null) {
             return new ProtocolComponentBuilder(
-                    component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                    component,
+                    cryptoProperties,
+                    protocolProperties,
+                    algorithmComponentBuilder,
+                    tlsGroups,
+                    tlsSignatureSchemes);
         }
         final Evidence evidence = new Evidence();
         evidence.setOccurrences(List.of(occurrences));
         this.component.setEvidence(evidence);
         return new ProtocolComponentBuilder(
-                component, cryptoProperties, protocolProperties, algorithmComponentBuilder);
+                component,
+                cryptoProperties,
+                protocolProperties,
+                algorithmComponentBuilder,
+                tlsGroups,
+                tlsSignatureSchemes);
     }
 
     @Nonnull

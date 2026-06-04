@@ -17,38 +17,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.output.cyclondx.builder;
+package com.ibm.plugin.rules.detection;
 
-import com.ibm.mapper.model.INode;
-import com.ibm.mapper.model.Protocol;
+import com.ibm.engine.model.IAction;
+import com.sonar.cxx.sslr.api.AstNode;
+import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import org.cyclonedx.model.Component;
-import org.cyclonedx.model.component.evidence.Occurrence;
 
-public interface IProtocolComponentBuilder {
-
-    @Nonnull
-    IProtocolComponentBuilder name(@Nullable Protocol name);
+/** Common action for TLS protocol settings discovered in C/C++ libraries. */
+public interface TlsConfigurationAction extends IAction<AstNode> {
 
     @Nonnull
-    IProtocolComponentBuilder type(@Nullable Protocol type);
+    List<String> cipherSuites();
 
     @Nonnull
-    IProtocolComponentBuilder version(@Nullable INode version);
+    List<String> tlsGroups();
 
     @Nonnull
-    IProtocolComponentBuilder tlsGroups(@Nullable INode tlsGroupCollection);
+    List<String> tlsSignatureSchemes();
 
-    @Nonnull
-    IProtocolComponentBuilder tlsSignatureSchemes(@Nullable INode tlsSignatureSchemeCollection);
+    @Nullable String tlsVersion();
 
-    @Nonnull
-    IProtocolComponentBuilder cipherSuites(@Nullable INode cipherSuiteCollection);
-
-    @Nonnull
-    IProtocolComponentBuilder occurrences(@Nullable Occurrence... occurrences);
-
-    @Nonnull
-    Component build();
+    boolean includeCipherSuiteAlgorithms();
 }

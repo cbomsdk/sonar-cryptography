@@ -21,10 +21,13 @@ package com.ibm.output.cyclonedx;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.ibm.mapper.mapper.ssl.CipherSuiteMapper;
 import com.ibm.mapper.model.CipherSuite;
 import com.ibm.mapper.model.Identifier;
 import com.ibm.mapper.model.KeyAgreement;
 import com.ibm.mapper.model.Oid;
+import com.ibm.mapper.model.TlsGroup;
+import com.ibm.mapper.model.TlsSignatureScheme;
 import com.ibm.mapper.model.Version;
 import com.ibm.mapper.model.algorithms.AES;
 import com.ibm.mapper.model.algorithms.DH;
@@ -34,6 +37,8 @@ import com.ibm.mapper.model.algorithms.SHA2;
 import com.ibm.mapper.model.collections.AssetCollection;
 import com.ibm.mapper.model.collections.CipherSuiteCollection;
 import com.ibm.mapper.model.collections.IdentifierCollection;
+import com.ibm.mapper.model.collections.TlsGroupCollection;
+import com.ibm.mapper.model.collections.TlsSignatureSchemeCollection;
 import com.ibm.mapper.model.mode.CBC;
 import com.ibm.mapper.model.protocol.IPSec;
 import com.ibm.mapper.model.protocol.TLS;
@@ -225,8 +230,7 @@ class ProtocolTest extends TestBase {
                             assertThat(protocolProperties.getVersion()).isEqualTo("1.3");
                             assertThat(protocolProperties.getCipherSuites()).isNotNull();
                             assertThat(protocolProperties.getCipherSuites()).hasSize(1);
-                            assertThat(protocolProperties.getCryptoRefArray()).isNotNull();
-                            assertThat(protocolProperties.getCryptoRefArray()).hasSize(3);
+                            assertThat(protocolProperties.getCryptoRefArray()).isNull();
 
                             final org.cyclonedx.model.component.crypto.CipherSuite cipherSuite =
                                     protocolProperties.getCipherSuites().get(0);
@@ -237,6 +241,224 @@ class ProtocolTest extends TestBase {
                             assertThat(cipherSuite.getIdentifiers()).contains("0x00", "0x6A");
                         }
                     }
+                });
+    }
+
+    @Test
+    void protocolWithCipherSuiteTlsExtensions() {
+        this.assertsNode(
+                () -> {
+                    final TLS tls = new TLS(detectionLocation);
+                    final CipherSuite cipherSuite =
+                            new CipherSuite("TLS_AES_128_GCM_SHA256", detectionLocation);
+                    cipherSuite.put(
+                            new TlsGroupCollection(
+                                    List.of(new TlsGroup("x25519", detectionLocation))));
+                    cipherSuite.put(
+                            new TlsSignatureSchemeCollection(
+                                    List.of(
+                                            new TlsSignatureScheme(
+                                                    "ecdsa_secp256r1_sha256", detectionLocation))));
+                    tls.put(new CipherSuiteCollection(List.of(cipherSuite)));
+                    return tls;
+                },
+                bom -> {
+                    assertThat(bom.getComponents())
+                            .filteredOn(component -> component.getName().equals("TLS"))
+                            .hasSize(1);
+                    final Component component =
+                            bom.getComponents().stream()
+                                    .filter(tls -> tls.getName().equals("TLS"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(component.getName()).isEqualTo("TLS");
+                    final ProtocolProperties protocolProperties =
+                            component.getCryptoProperties().getProtocolProperties();
+                    assertThat(protocolProperties.getType()).isEqualTo(ProtocolType.TLS);
+                    assertThat(protocolProperties.getCipherSuites()).hasSize(1);
+                    final org.cyclonedx.model.component.crypto.CipherSuite cipherSuite =
+                            protocolProperties.getCipherSuites().get(0);
+                    assertThat(cipherSuite.getName()).isEqualTo("TLS_AES_128_GCM_SHA256");
+                    assertThat(cipherSuite.getTlsGroups()).containsExactly("x25519");
+                    assertThat(cipherSuite.getTlsSignatureSchemes())
+                            .containsExactly("ecdsa_secp256r1_sha256");
+                });
+    }
+
+    @Test
+    void mergesProtocolPropertiesForDuplicateTlsComponents() {
+        this.assertsNodes(
+                () -> {
+                    final TLS genericTls = new TLS(detectionLocation);
+                    final TLS configuredTls = new TLS(detectionLocation);
+                    final CipherSuite cipherSuite =
+                            new CipherSuiteMapper()
+                                    .parse("TLS_AES_128_GCM_SHA256", detectionLocation)
+                                    .filter(CipherSuite.class::isInstance)
+                                    .map(CipherSuite.class::cast)
+                                    .orElseThrow();
+                    configuredTls.put(new CipherSuiteCollection(List.of(cipherSuite)));
+                    return List.of(genericTls, configuredTls);
+                },
+                bom -> {
+                    assertThat(bom.getComponents())
+                            .filteredOn(component -> component.getName().equals("TLS"))
+                            .hasSize(1);
+                    final Component component =
+                            bom.getComponents().stream()
+                                    .filter(tls -> tls.getName().equals("TLS"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(component.getName()).isEqualTo("TLS");
+                    final ProtocolProperties protocolProperties =
+                            component.getCryptoProperties().getProtocolProperties();
+                    assertThat(protocolProperties.getType()).isEqualTo(ProtocolType.TLS);
+                    assertThat(protocolProperties.getCipherSuites()).hasSize(1);
+                    final org.cyclonedx.model.component.crypto.CipherSuite cipherSuite =
+                            protocolProperties.getCipherSuites().get(0);
+                    assertThat(cipherSuite.getName()).isEqualTo("TLS_AES_128_GCM_SHA256");
+                    assertThat(cipherSuite.getAlgorithms()).isNotEmpty();
+                    assertThat(protocolProperties.getCryptoRefArray()).isNull();
+                });
+    }
+
+    @Test
+    void keepsTlsConfigurationCipherSuiteSeparateFromConcreteCipherSuites() {
+        this.assertsNodes(
+                () -> {
+                    final TLS cipherSuiteTls = new TLS(detectionLocation);
+                    cipherSuiteTls.put(
+                            new CipherSuiteCollection(
+                                    List.of(
+                                            new CipherSuite(
+                                                    "TLS_AES_128_GCM_SHA256", detectionLocation))));
+
+                    final CipherSuite tlsConfiguration =
+                            new CipherSuite("TLS configuration", detectionLocation);
+                    tlsConfiguration.put(
+                            new TlsGroupCollection(
+                                    List.of(new TlsGroup("x25519", detectionLocation))));
+                    tlsConfiguration.put(
+                            new TlsSignatureSchemeCollection(
+                                    List.of(
+                                            new TlsSignatureScheme(
+                                                    "ecdsa_secp256r1_sha256", detectionLocation))));
+                    final TLS configuredTls = new TLS(detectionLocation);
+                    configuredTls.put(new CipherSuiteCollection(List.of(tlsConfiguration)));
+
+                    return List.of(cipherSuiteTls, configuredTls);
+                },
+                bom -> {
+                    assertThat(bom.getComponents()).hasSize(1);
+                    final ProtocolProperties protocolProperties =
+                            bom.getComponents()
+                                    .get(0)
+                                    .getCryptoProperties()
+                                    .getProtocolProperties();
+                    assertThat(protocolProperties.getCipherSuites()).hasSize(2);
+                    final org.cyclonedx.model.component.crypto.CipherSuite cipherSuite =
+                            protocolProperties.getCipherSuites().stream()
+                                    .filter(
+                                            suite ->
+                                                    suite.getName()
+                                                            .equals("TLS_AES_128_GCM_SHA256"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(cipherSuite.getName()).isEqualTo("TLS_AES_128_GCM_SHA256");
+                    assertThat(cipherSuite.getTlsGroups()).isNullOrEmpty();
+                    assertThat(cipherSuite.getTlsSignatureSchemes()).isNullOrEmpty();
+                    final org.cyclonedx.model.component.crypto.CipherSuite configuration =
+                            protocolProperties.getCipherSuites().stream()
+                                    .filter(suite -> suite.getName().equals("TLS configuration"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(configuration.getTlsGroups()).containsExactly("x25519");
+                    assertThat(configuration.getTlsSignatureSchemes())
+                            .containsExactly("ecdsa_secp256r1_sha256");
+                });
+    }
+
+    @Test
+    void explicitTlsConfigurationOverridesDefaultPresetValues() {
+        this.assertsNodes(
+                () -> {
+                    final CipherSuite defaultCipherSuite =
+                            new CipherSuite("TLS_AES_256_GCM_SHA384", detectionLocation);
+                    final CipherSuite defaultConfiguration =
+                            new CipherSuite("TLS configuration", detectionLocation);
+                    defaultConfiguration.put(
+                            new TlsGroupCollection(
+                                    List.of(
+                                            new TlsGroup("x25519", detectionLocation),
+                                            new TlsGroup("secp256r1", detectionLocation))));
+                    defaultConfiguration.put(
+                            new TlsSignatureSchemeCollection(
+                                    List.of(
+                                            new TlsSignatureScheme(
+                                                    "rsa_pss_rsae_sha256", detectionLocation),
+                                            new TlsSignatureScheme(
+                                                    "ecdsa_secp256r1_sha256", detectionLocation))));
+                    final TLS defaultTls = new TLS(detectionLocation);
+                    defaultTls.put(new Version("1.3", detectionLocation));
+                    defaultTls.put(
+                            new CipherSuiteCollection(
+                                    List.of(defaultCipherSuite, defaultConfiguration)));
+
+                    final CipherSuite explicitCipherSuite =
+                            new CipherSuiteMapper()
+                                    .parse("TLS_AES_128_GCM_SHA256", detectionLocation)
+                                    .map(CipherSuite.class::cast)
+                                    .orElseThrow();
+                    final CipherSuite explicitConfiguration =
+                            new CipherSuite("TLS configuration", detectionLocation);
+                    explicitConfiguration.put(
+                            new TlsGroupCollection(
+                                    List.of(new TlsGroup("x25519", detectionLocation))));
+                    explicitConfiguration.put(
+                            new TlsSignatureSchemeCollection(
+                                    List.of(
+                                            new TlsSignatureScheme(
+                                                    "ecdsa_secp256r1_sha256", detectionLocation))));
+                    final TLS explicitTls = new TLS(detectionLocation);
+                    explicitTls.put(new Version("1.2", detectionLocation));
+                    explicitTls.put(
+                            new CipherSuiteCollection(
+                                    List.of(explicitCipherSuite, explicitConfiguration)));
+
+                    return List.of(defaultTls, explicitTls);
+                },
+                bom -> {
+                    final ProtocolProperties protocolProperties =
+                            bom.getComponents().stream()
+                                    .filter(component -> component.getName().equals("TLS"))
+                                    .findFirst()
+                                    .orElseThrow()
+                                    .getCryptoProperties()
+                                    .getProtocolProperties();
+                    assertThat(protocolProperties.getVersion()).isEqualTo("1.2");
+                    assertThat(protocolProperties.getCipherSuites()).hasSize(2);
+                    assertThat(
+                                    protocolProperties.getCipherSuites().stream()
+                                            .map(suite -> suite.getName()))
+                            .containsExactlyInAnyOrder(
+                                    "TLS_AES_128_GCM_SHA256", "TLS configuration");
+                    final org.cyclonedx.model.component.crypto.CipherSuite cipherSuite =
+                            protocolProperties.getCipherSuites().stream()
+                                    .filter(
+                                            suite ->
+                                                    suite.getName()
+                                                            .equals("TLS_AES_128_GCM_SHA256"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(cipherSuite.getAlgorithms()).isNotEmpty();
+                    final org.cyclonedx.model.component.crypto.CipherSuite configuration =
+                            protocolProperties.getCipherSuites().stream()
+                                    .filter(suite -> suite.getName().equals("TLS configuration"))
+                                    .findFirst()
+                                    .orElseThrow();
+                    assertThat(configuration.getTlsGroups()).containsExactly("x25519");
+                    assertThat(configuration.getTlsSignatureSchemes())
+                            .containsExactly("ecdsa_secp256r1_sha256");
                 });
     }
 
@@ -266,10 +488,13 @@ class ProtocolTest extends TestBase {
                             assertThat(protocolProperties.getType()).isEqualTo(ProtocolType.IPSEC);
                             assertThat(protocolProperties.getVersion()).isNull();
                             assertThat(protocolProperties.getCipherSuites()).isNull();
-                            assertThat(protocolProperties.getCryptoRefArray()).isNotNull();
-                            assertThat(protocolProperties.getCryptoRefArray()).hasSize(2);
+                            assertThat(protocolProperties.getCryptoRefArray()).isNull();
                         }
                     }
+                    assertThat(bom.getDependencies())
+                            .anySatisfy(
+                                    dependency ->
+                                            assertThat(dependency.getDependencies()).hasSize(2));
                 });
     }
 }
