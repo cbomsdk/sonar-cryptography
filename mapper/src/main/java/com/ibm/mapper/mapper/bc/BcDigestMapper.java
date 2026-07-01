@@ -116,7 +116,7 @@ public class BcDigestMapper implements IMapper {
             case "SHA1Digest" -> Optional.of(new SHA(detectionLocation));
             case "SHA224Digest" -> Optional.of(new SHA2(224, detectionLocation));
             case "SHA256Digest" -> Optional.of(new SHA2(256, detectionLocation));
-            case "SHA384Digest" -> Optional.of(new SHA3(384, detectionLocation));
+            case "SHA384Digest" -> Optional.of(new SHA2(384, detectionLocation));
             case "SHA3Digest" -> Optional.of(new SHA3(detectionLocation));
             case "SHA512Digest" -> Optional.of(new SHA2(512, detectionLocation));
             case "SHA512tDigest" -> Optional.of(new SHA2(512, detectionLocation));

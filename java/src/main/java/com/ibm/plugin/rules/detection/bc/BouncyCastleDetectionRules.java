@@ -42,6 +42,7 @@ import com.ibm.plugin.rules.detection.bc.dsa.BcDSA;
 import com.ibm.plugin.rules.detection.bc.encapsulatedsecret.BcEncapsulatedSecretExtractor;
 import com.ibm.plugin.rules.detection.bc.encapsulatedsecret.BcEncapsulatedSecretGenerator;
 import com.ibm.plugin.rules.detection.bc.mac.BcMac;
+import com.ibm.plugin.rules.detection.bc.operator.BcOperator;
 import com.ibm.plugin.rules.detection.bc.other.BcIESEngine;
 import com.ibm.plugin.rules.detection.bc.other.BcSM2Engine;
 import com.ibm.plugin.rules.detection.bc.pbe.BcPBEParametersGenerator;
@@ -102,6 +103,8 @@ public final class BouncyCastleDetectionRules {
                         BcSigner.rules().stream(),
                         // Asymmetric Key Pair Generators
                         BcAsymmetricCipherKeyPairGenerators.rules().stream(),
+                        // Operator / bcpkix high-level APIs
+                        BcOperator.rules().stream(),
                         // Other
                         BcIESEngine.rules().stream(),
                         BcSM2Engine.rules().stream())

@@ -52,6 +52,9 @@ public final class PycaRSA {
     private static final String PADDING_TYPE = "cryptography.hazmat.primitives.asymmetric.padding";
     private static final String HASH_TYPE = "cryptography.hazmat.primitives.*";
     private static final String RSA_TYPE = "cryptography.hazmat.primitives.asymmetric.rsa";
+    private static final String GENERATED_PRIVATE_KEY_TYPE = RSA_TYPE + ".generate_private_key";
+    private static final String GENERATED_PUBLIC_KEY_TYPE =
+            GENERATED_PRIVATE_KEY_TYPE + ".public_key";
 
     private static final IDetectionRule<Tree> MGF1 =
             new DetectionRuleBuilder<Tree>()
@@ -116,8 +119,7 @@ public final class PycaRSA {
     private static final IDetectionRule<Tree> SIGN_RSA =
             new DetectionRuleBuilder<Tree>()
                     .createDetectionRule()
-                    .forObjectTypes(
-                            "cryptography.hazmat.primitives.asymmetric.rsa.generate_private_key")
+                    .forObjectTypes(GENERATED_PRIVATE_KEY_TYPE)
                     .forMethods("sign")
                     .shouldBeDetectedAs(new SignatureActionFactory<>(SignatureAction.Action.SIGN))
                     .withMethodParameter(ANY)
@@ -138,8 +140,7 @@ public final class PycaRSA {
     private static final IDetectionRule<Tree> DECRYPT_RSA =
             new DetectionRuleBuilder<Tree>()
                     .createDetectionRule()
-                    .forObjectTypes(
-                            "cryptography.hazmat.primitives.asymmetric.rsa.generate_private_key")
+                    .forObjectTypes(GENERATED_PRIVATE_KEY_TYPE)
                     .forMethods("decrypt")
                     .shouldBeDetectedAs(new CipherActionFactory<>(CipherAction.Action.DECRYPT))
                     .withMethodParameter(ANY)
@@ -150,6 +151,20 @@ public final class PycaRSA {
                                     PKCS1v15)) // For encryption/decryption, padding can only be
                     // OAEP or PKCSv15
                     .buildForContext(new CipherContext(Map.of("algorithm", "RSA")))
+                    .inBundle(() -> "Pyca")
+                    .withoutDependingDetectionRules();
+
+    private static final IDetectionRule<Tree> ENCRYPT_RSA =
+            new DetectionRuleBuilder<Tree>()
+                    .createDetectionRule()
+                    .forObjectTypes(GENERATED_PUBLIC_KEY_TYPE)
+                    .forMethods("encrypt")
+                    .shouldBeDetectedAs(new CipherActionFactory<>(CipherAction.Action.ENCRYPT))
+                    .withMethodParameter(ANY)
+                    .withMethodParameter("cryptography.hazmat.primitives.asymmetric.padding.*")
+                    .addDependingDetectionRules(List.of(OAEP, PKCS1v15))
+                    .buildForContext(
+                            new CipherContext(Map.of("algorithm", "RSA", "standalone", "true")))
                     .inBundle(() -> "Pyca")
                     .withoutDependingDetectionRules();
 
@@ -189,6 +204,6 @@ public final class PycaRSA {
 
     @Nonnull
     public static List<IDetectionRule<Tree>> rules() {
-        return List.of(GENERATION_RSA, PUBLIC_NUMBERS_RSA, PRIVATE_NUMBERS_RSA);
+        return List.of(GENERATION_RSA, PUBLIC_NUMBERS_RSA, PRIVATE_NUMBERS_RSA, ENCRYPT_RSA);
     }
 }

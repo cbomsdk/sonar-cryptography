@@ -26,6 +26,8 @@ import com.ibm.engine.model.Algorithm;
 import com.ibm.engine.model.Curve;
 import com.ibm.engine.model.IValue;
 import com.ibm.engine.model.SignatureAction;
+import com.ibm.engine.model.ValueAction;
+import com.ibm.engine.model.context.DigestContext;
 import com.ibm.engine.model.context.PrivateKeyContext;
 import com.ibm.engine.model.context.SignatureContext;
 import com.ibm.mapper.model.BlockSize;
@@ -63,6 +65,11 @@ class PycaEllipticCurveSignTest extends TestBase {
             int findingId,
             @Nonnull DetectionStore<PythonCheck, Tree, Symbol, PythonVisitorContext> detectionStore,
             @Nonnull List<INode> nodes) {
+        if (detectionStore.getDetectionValueContext() instanceof DigestContext) {
+            assertStandaloneSha3Digest(detectionStore, nodes);
+            return;
+        }
+
         /*
          * Detection Store
          */
@@ -154,5 +161,24 @@ class PycaEllipticCurveSignTest extends TestBase {
         assertThat(keyGenerationNode).isNotNull();
         assertThat(keyGenerationNode.getChildren()).isEmpty();
         assertThat(keyGenerationNode.asString()).isEqualTo("KEYGENERATION");
+    }
+
+    private static void assertStandaloneSha3Digest(
+            @Nonnull DetectionStore<PythonCheck, Tree, Symbol, PythonVisitorContext> detectionStore,
+            @Nonnull List<INode> nodes) {
+        assertThat(detectionStore.getDetectionValues()).hasSize(1);
+        IValue<Tree> value0 = detectionStore.getDetectionValues().get(0);
+        assertThat(value0).isInstanceOf(ValueAction.class);
+        assertThat(value0.asString()).isIn("SHA3_224", "SHA3_512");
+
+        assertThat(nodes).hasSize(1);
+        INode messageDigestNode = nodes.get(0);
+        assertThat(messageDigestNode.getKind()).isEqualTo(MessageDigest.class);
+        assertThat(messageDigestNode.asString()).isIn("SHA3-224", "SHA3-512");
+
+        INode digestNode = messageDigestNode.getChildren().get(Digest.class);
+        assertThat(digestNode).isNotNull();
+        assertThat(digestNode.getChildren()).isEmpty();
+        assertThat(digestNode.asString()).isEqualTo("DIGEST");
     }
 }

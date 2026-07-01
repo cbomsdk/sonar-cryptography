@@ -22,6 +22,7 @@ package com.ibm.plugin.rules.detection.bc;
 import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 public class BouncyCastleJars {
     // From https://www.bouncycastle.org/latest_releases.html
@@ -33,4 +34,14 @@ public class BouncyCastleJars {
                     new File("src/test/resources/test-jars/bcprov-jdk18on-1.80.jar"));
 
     public static Collection<File> latestJar = bcprov180Jar;
+
+    public static Collection<File> bcpkix183Jars =
+            List.of(
+                    mavenJar("org/bouncycastle/bcpkix-jdk18on/1.83/bcpkix-jdk18on-1.83.jar"),
+                    mavenJar("org/bouncycastle/bcprov-jdk18on/1.83/bcprov-jdk18on-1.83.jar"),
+                    mavenJar("org/bouncycastle/bcutil-jdk18on/1.83/bcutil-jdk18on-1.83.jar"));
+
+    private static File mavenJar(String relativePath) {
+        return new File(System.getProperty("user.home"), ".m2/repository/" + relativePath);
+    }
 }

@@ -34,6 +34,7 @@ import com.ibm.mapper.model.INode;
 import com.ibm.mapper.model.KeyLength;
 import com.ibm.mapper.model.KeyWrap;
 import com.ibm.mapper.model.algorithms.AES;
+import com.ibm.mapper.model.algorithms.RSA;
 import com.ibm.mapper.model.functionality.Decrypt;
 import com.ibm.mapper.model.functionality.Encapsulate;
 import com.ibm.mapper.model.functionality.Encrypt;
@@ -108,6 +109,21 @@ public final class PycaCipherContextTranslator implements IContextTranslation<Tr
             };
         } else if (value instanceof CipherAction<Tree> cipherAction
                 && detectionContext instanceof DetectionContext context) {
+            if (context.get("standalone").map("true"::equals).orElse(false)
+                    && context.get("algorithm").map("RSA"::equalsIgnoreCase).orElse(false)) {
+                final RSA rsa = new RSA(detectionLocation);
+                return switch (cipherAction.getAction()) {
+                    case ENCRYPT -> {
+                        rsa.put(new Encrypt(detectionLocation));
+                        yield Optional.of(rsa);
+                    }
+                    case DECRYPT -> {
+                        rsa.put(new Decrypt(detectionLocation));
+                        yield Optional.of(rsa);
+                    }
+                    default -> Optional.empty();
+                };
+            }
             return switch (cipherAction.getAction()) {
                 case DECRYPT -> Optional.of(new Decrypt(detectionLocation));
                 case ENCRYPT -> Optional.of(new Encrypt(detectionLocation));

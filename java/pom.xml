@@ -61,6 +61,20 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Enables IDE linting and semantic test resolution for bcpkix high-level Bouncy Castle APIs -->
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.83</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Enables IDE linting and semantic test resolution for Apache Commons Codec DigestUtils -->
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
+            <version>1.19.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>33.5.0-jre</version>

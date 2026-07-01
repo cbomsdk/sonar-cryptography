@@ -43,22 +43,23 @@ public final class PycaDigestMapper implements IMapper {
             return Optional.empty();
         }
 
-        return switch (str.toUpperCase().trim()) {
-            case "SHA1" -> Optional.of(new SHA(detectionLocation));
+        final String normalized = str.toUpperCase().trim().replace("-", "_");
+        return switch (normalized) {
+            case "SHA1", "SHA_1" -> Optional.of(new SHA(detectionLocation));
             case "SHA512_224" ->
                     Optional.of(new SHA2(224, new SHA2(512, detectionLocation), detectionLocation));
             case "SHA512_256" ->
                     Optional.of(new SHA2(256, new SHA2(512, detectionLocation), detectionLocation));
-            case "SHA224" -> Optional.of(new SHA2(224, detectionLocation));
-            case "SHA256" -> Optional.of(new SHA2(256, detectionLocation));
-            case "SHA384" -> Optional.of(new SHA2(384, detectionLocation));
-            case "SHA512" -> Optional.of(new SHA2(512, detectionLocation));
+            case "SHA224", "SHA_224" -> Optional.of(new SHA2(224, detectionLocation));
+            case "SHA256", "SHA_256" -> Optional.of(new SHA2(256, detectionLocation));
+            case "SHA384", "SHA_384" -> Optional.of(new SHA2(384, detectionLocation));
+            case "SHA512", "SHA_512" -> Optional.of(new SHA2(512, detectionLocation));
             case "SHA3_224" -> Optional.of(new SHA3(224, detectionLocation));
             case "SHA3_256" -> Optional.of(new SHA3(256, detectionLocation));
             case "SHA3_384" -> Optional.of(new SHA3(384, detectionLocation));
             case "SHA3_512" -> Optional.of(new SHA3(512, detectionLocation));
-            case "SHAKE128" -> Optional.of(new SHAKE(128, detectionLocation));
-            case "SHAKE256" -> Optional.of(new SHAKE(256, detectionLocation));
+            case "SHAKE128", "SHAKE_128" -> Optional.of(new SHAKE(128, detectionLocation));
+            case "SHAKE256", "SHAKE_256" -> Optional.of(new SHAKE(256, detectionLocation));
             case "MD5" -> Optional.of(new MD5(detectionLocation));
             case "BLAKE2B" -> Optional.of(new BLAKE2b(false, detectionLocation));
             case "BLAKE2S" -> Optional.of(new BLAKE2s(false, detectionLocation));

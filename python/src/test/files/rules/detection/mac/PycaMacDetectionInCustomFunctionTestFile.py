@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import hashes
 
 def custom_sign(key, data):
     # Custom function with cryptographic operation
-    algorithm = hashes.SHA256()
+    algorithm = hashes.SHA256() # Noncompliant {{(MessageDigest) SHA256}}
     hmac_obj = hmac.HMAC(key, algorithm)  # Noncompliant {{(Mac) HMAC-SHA256}}
     hmac_obj.update(data)
     return hmac_obj.finalize()

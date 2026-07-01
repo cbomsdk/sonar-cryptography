@@ -45,7 +45,7 @@ public final class JavaDigestContextTranslator extends JavaAbstractLibraryTransl
             @Nonnull IValue<Tree> value,
             @Nonnull IDetectionContext detectionContext,
             @Nonnull DetectionLocation detectionLocation) {
-        if (value instanceof Algorithm<Tree>) {
+        if (value instanceof Algorithm<Tree> || value instanceof ValueAction<Tree>) {
             JcaMessageDigestMapper messageDigestMapper = new JcaMessageDigestMapper();
             return messageDigestMapper
                     .parse(value.asString(), detectionLocation)

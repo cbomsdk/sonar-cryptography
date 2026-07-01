@@ -45,6 +45,7 @@ public final class PycaKDF {
 
     private static final String HASH_TYPE = "cryptography.hazmat.primitives.hashes.*";
     private static final String KDF_TYPE_PREFIX = "cryptography.hazmat.primitives.kdf.";
+    private static final String HASHLIB_TYPE = "hashlib";
 
     private static final IDetectionRule<Tree> X963KDF =
             new DetectionRuleBuilder<Tree>()
@@ -205,11 +206,51 @@ public final class PycaKDF {
                     .inBundle(() -> "Pyca")
                     .withoutDependingDetectionRules();
 
+    private static final IDetectionRule<Tree> HASHLIB_PBKDF2_HMAC =
+            new DetectionRuleBuilder<Tree>()
+                    .createDetectionRule()
+                    .forObjectTypes(HASHLIB_TYPE)
+                    .forMethods("pbkdf2_hmac")
+                    .withMethodParameter(ANY)
+                    .shouldBeDetectedAs(new AlgorithmFactory<>())
+                    .withMethodParameter(ANY)
+                    .withMethodParameter(ANY)
+                    .withMethodParameter("int")
+                    .shouldBeDetectedAs(
+                            new AlgorithmParameterFactory<>(AlgorithmParameter.Kind.ITERATIONS))
+                    .asChildOfParameterWithId(0)
+                    .withMethodParameter("int")
+                    .shouldBeDetectedAs(new KeySizeFactory<>(Size.UnitType.BYTE))
+                    .asChildOfParameterWithId(0)
+                    .buildForContext(new KeyDerivationFunctionContext(Map.of("kind", "pbkdf2")))
+                    .inBundle(() -> "Hashlib")
+                    .withoutDependingDetectionRules();
+
+    private static final IDetectionRule<Tree> HASHLIB_SCRYPT =
+            new DetectionRuleBuilder<Tree>()
+                    .createDetectionRule()
+                    .forObjectTypes(HASHLIB_TYPE)
+                    .forMethods("scrypt")
+                    .shouldBeDetectedAs(new ValueActionFactory<>("Scrypt"))
+                    .withMethodParameter(ANY)
+                    .withMethodParameter(ANY)
+                    .withMethodParameter("int")
+                    .withMethodParameter("int")
+                    .withMethodParameter("int")
+                    .withMethodParameter("int")
+                    .shouldBeDetectedAs(new KeySizeFactory<>(Size.UnitType.BYTE))
+                    .asChildOfParameterWithId(0)
+                    .buildForContext(new KeyDerivationFunctionContext())
+                    .inBundle(() -> "Hashlib")
+                    .withoutDependingDetectionRules();
+
     @Nonnull
     public static List<IDetectionRule<Tree>> rules() {
         return List.of(
                 PBKDF2,
                 SCRYPT,
+                HASHLIB_PBKDF2_HMAC,
+                HASHLIB_SCRYPT,
                 CONCAT_KDF,
                 CONCAT_KDF_HMAC,
                 HKDF,

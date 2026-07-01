@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives import hashes
 
 def generate_hmac(key, data):    
     # Selecting the desired hash algorithm (e.g., SHA-256)
-    algorithm = hashes.SHA256()
+    algorithm = hashes.SHA256() # Noncompliant {{(MessageDigest) SHA256}}
     
     # Creating the HMAC context
     hmac_ctx = hmac.HMAC(key, algorithm) # Noncompliant {{(Mac) HMAC-SHA256}}

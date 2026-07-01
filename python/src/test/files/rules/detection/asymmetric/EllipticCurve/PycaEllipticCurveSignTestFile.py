@@ -7,12 +7,12 @@ param = ec.SECP384R1()
 # private_key, other_var = ec.generate_private_key(param), 42 # TODO: because of TraceSeymbols not yet supporting multi-var assignments, this does not work
 private_key = ec.generate_private_key(param) # Noncompliant {{(PrivateKey) EC-secp384r1}}
 
-# Ploys that should not be detected
+# Ploys that should not be detected as EC signing
 b = ec.ECDSA(utils.Prehashed(hashes.SHA3_224())) # TODO: The test should pass also when removing "b ="
 utils.Prehashed(hashes.SHA3_224())
-hashes.SHA3_224()
+hashes.SHA3_224() # Noncompliant {{(MessageDigest) SHA3-224}}
 
-chosen_hash = hashes.SHA3_512()
+chosen_hash = hashes.SHA3_512() # Noncompliant {{(MessageDigest) SHA3-512}}
 hasher = hashes.Hash(chosen_hash)
 digest = hasher.finalize()
 # sig = private_key.sign(digest, ec.ECDSA(utils.Prehashed(chosen_hash))) # TODO: test this

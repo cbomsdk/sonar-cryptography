@@ -17,31 +17,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.plugin.rules.detection;
+package com.ibm.plugin.rules.detection.commonscodec;
 
 import com.ibm.engine.rule.IDetectionRule;
-import com.ibm.plugin.rules.detection.bc.BouncyCastleDetectionRules;
-import com.ibm.plugin.rules.detection.commonscodec.CommonsCodecDetectionRules;
-import com.ibm.plugin.rules.detection.jca.JcaDetectionRules;
-import com.ibm.plugin.rules.detection.ssl.SSLDetectionRules;
+import com.ibm.plugin.rules.detection.commonscodec.digest.CommonsCodecDigestUtils;
 import java.util.List;
-import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import org.sonar.plugins.java.api.tree.Tree;
 
-public final class JavaDetectionRules {
-    private JavaDetectionRules() {
+public final class CommonsCodecDetectionRules {
+
+    private CommonsCodecDetectionRules() {
         // private
     }
 
     @Nonnull
     public static List<IDetectionRule<Tree>> rules() {
-        return Stream.of(
-                        JcaDetectionRules.rules().stream(),
-                        BouncyCastleDetectionRules.rules().stream(),
-                        CommonsCodecDetectionRules.rules().stream(),
-                        SSLDetectionRules.rules().stream())
-                .flatMap(i -> i)
-                .toList();
+        return CommonsCodecDigestUtils.rules();
     }
 }

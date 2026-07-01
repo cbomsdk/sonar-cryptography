@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.ibm.engine.detection.DetectionStore;
 import com.ibm.engine.model.Algorithm;
 import com.ibm.engine.model.IValue;
+import com.ibm.engine.model.ValueAction;
+import com.ibm.engine.model.context.DigestContext;
 import com.ibm.engine.model.context.MacContext;
 import com.ibm.mapper.model.BlockSize;
 import com.ibm.mapper.model.DigestSize;
@@ -55,6 +57,10 @@ class PycaHMACTest extends TestBase {
             int findingId,
             @Nonnull DetectionStore<PythonCheck, Tree, Symbol, PythonVisitorContext> detectionStore,
             @Nonnull List<INode> nodes) {
+        if (detectionStore.getDetectionValueContext() instanceof DigestContext) {
+            assertStandaloneSha256Digest(detectionStore, nodes);
+            return;
+        }
 
         /*
          * Detection Store
@@ -117,5 +123,24 @@ class PycaHMACTest extends TestBase {
         assertThat(oidNode1).isNotNull();
         assertThat(oidNode1.getChildren()).isEmpty();
         assertThat(oidNode1.asString()).isEqualTo("1.2.840.113549.2.9");
+    }
+
+    private static void assertStandaloneSha256Digest(
+            @Nonnull DetectionStore<PythonCheck, Tree, Symbol, PythonVisitorContext> detectionStore,
+            @Nonnull List<INode> nodes) {
+        assertThat(detectionStore.getDetectionValues()).hasSize(1);
+        IValue<Tree> value0 = detectionStore.getDetectionValues().get(0);
+        assertThat(value0).isInstanceOf(ValueAction.class);
+        assertThat(value0.asString()).isEqualTo("SHA256");
+
+        assertThat(nodes).hasSize(1);
+        INode messageDigestNode = nodes.get(0);
+        assertThat(messageDigestNode.getKind()).isEqualTo(MessageDigest.class);
+        assertThat(messageDigestNode.asString()).isEqualTo("SHA256");
+
+        INode digestNode = messageDigestNode.getChildren().get(Digest.class);
+        assertThat(digestNode).isNotNull();
+        assertThat(digestNode.getChildren()).isEmpty();
+        assertThat(digestNode.asString()).isEqualTo("DIGEST");
     }
 }

@@ -27,6 +27,7 @@ import com.ibm.engine.rule.IDetectionRule;
 import com.ibm.mapper.model.INode;
 import com.ibm.mapper.reorganizer.IReorganizerRule;
 import com.ibm.plugin.PythonAggregator;
+import com.ibm.plugin.rules.detection.hash.PycaHash;
 import com.ibm.plugin.translation.PythonTranslationProcess;
 import com.ibm.plugin.translation.reorganizer.PythonReorganizerRules;
 import com.ibm.rules.IReportableDetectionRule;
@@ -69,6 +70,9 @@ public abstract class PythonBaseDetectionRule extends PythonVisitorCheck
     public void visitCallExpression(@Nonnull CallExpression tree) {
         detectionRules.forEach(
                 rule -> {
+                    if (PycaHash.isTopLevelHashRule(rule) && !PycaHash.shouldScanAsRoot(tree)) {
+                        return;
+                    }
                     DetectionExecutive<PythonCheck, Tree, Symbol, PythonVisitorContext>
                             detectionExecutive =
                                     PythonAggregator.getLanguageSupport()

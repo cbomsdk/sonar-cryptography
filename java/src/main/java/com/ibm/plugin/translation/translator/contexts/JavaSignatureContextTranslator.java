@@ -68,7 +68,10 @@ public final class JavaSignatureContextTranslator extends JavaAbstractLibraryTra
             @Nonnull IValue<Tree> value,
             @Nonnull IDetectionContext detectionContext,
             @Nonnull DetectionLocation detectionLocation) {
-        if (value instanceof ValueAction<Tree> valueAction
+        if (value instanceof com.ibm.engine.model.Algorithm<Tree>) {
+            final JcaAlgorithmMapper jcaAlgorithmMapper = new JcaAlgorithmMapper();
+            return jcaAlgorithmMapper.parse(value.asString(), detectionLocation).map(a -> a);
+        } else if (value instanceof ValueAction<Tree> valueAction
                 && detectionContext instanceof DetectionContext context) {
             final String kind = context.get("kind").orElse("");
             switch (kind) {
