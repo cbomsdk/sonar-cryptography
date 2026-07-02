@@ -1,6 +1,6 @@
 /*
  * Sonar Cryptography Plugin
- * Copyright (C) 2024 PQCA
+ * Copyright (C) 2026 PQCA
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,18 +17,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.ibm.plugin.rules.detection.bc.operator;
+package com.ibm.plugin.rules.detection.commonscodec.digest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ibm.engine.detection.DetectionStore;
-import com.ibm.engine.model.Algorithm;
-import com.ibm.engine.model.IValue;
-import com.ibm.engine.model.context.SignatureContext;
+import com.ibm.engine.model.context.DigestContext;
 import com.ibm.mapper.model.INode;
-import com.ibm.mapper.model.Signature;
+import com.ibm.mapper.model.MessageDigest;
 import com.ibm.plugin.TestBase;
-import com.ibm.plugin.rules.detection.bc.BouncyCastleJars;
+import com.ibm.plugin.rules.detection.commonscodec.CommonsCodecJars;
 import java.util.List;
 import javax.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
@@ -38,27 +36,25 @@ import org.sonar.plugins.java.api.JavaFileScannerContext;
 import org.sonar.plugins.java.api.semantic.Symbol;
 import org.sonar.plugins.java.api.tree.Tree;
 
-class BcOperatorTest extends TestBase {
-
-    private static final List<String> SIGNATURE_ALGORITHMS =
-            List.of(
-                    "SHA256withRSA",
-                    "SHA384withDSA",
-                    "SHA3-224withECDSA",
-                    "SHA512withRSA",
-                    "SHA256withRSA",
-                    "SHA256withRSA",
-                    "SHA256withRSA",
-                    "SHA384withDSA",
-                    "SHA3-224withECDSA");
+class CommonsCodecDigestUtilsSha512HexScratchTest extends TestBase {
 
     @Test
-    void test() {
+    void detectsSupportedSha512HexCalls() {
         CheckVerifier.newVerifier()
-                .onFile("src/test/files/rules/detection/bc/operator/BcOperatorTestFile.java")
+                .onFile(
+                        "src/test/files/rules/detection/commonscodec/digest/CommonsCodecDigestUtilsSha512HexScratchTestFile.java")
                 .withChecks(this)
-                .withClassPath(BouncyCastleJars.bcpkix183Jars)
+                .withClassPath(CommonsCodecJars.latestJar)
                 .verifyIssues();
+    }
+
+    @Test
+    void doesNotDetectWhenCommonsCodecTypeCannotBeResolved() {
+        CheckVerifier.newVerifier()
+                .onFile(
+                        "src/test/files/rules/detection/commonscodec/digest/CommonsCodecDigestUtilsSha512HexNoClasspathScratchTestFile.java")
+                .withChecks(this)
+                .verifyNoIssues();
     }
 
     @Override
@@ -66,17 +62,11 @@ class BcOperatorTest extends TestBase {
             int findingId,
             @Nonnull DetectionStore<JavaCheck, Tree, Symbol, JavaFileScannerContext> detectionStore,
             @Nonnull List<INode> nodes) {
-        assertThat(findingId).isLessThan(SIGNATURE_ALGORITHMS.size());
-
+        assertThat(detectionStore.getDetectionValueContext()).isInstanceOf(DigestContext.class);
         assertThat(detectionStore.getDetectionValues()).hasSize(1);
-        IValue<Tree> value = detectionStore.getDetectionValues().get(0);
-        assertThat(detectionStore.getDetectionValueContext()).isInstanceOf(SignatureContext.class);
-        assertThat(value).isInstanceOf(Algorithm.class);
-        assertThat(value.asString()).isEqualTo(SIGNATURE_ALGORITHMS.get(findingId));
-
+        assertThat(detectionStore.getDetectionValues().get(0).asString()).isEqualTo("SHA-512");
         assertThat(nodes).hasSize(1);
-        INode signatureNode = nodes.get(0);
-        assertThat(signatureNode.getKind()).isEqualTo(Signature.class);
-        assertThat(signatureNode.asString()).isEqualTo(SIGNATURE_ALGORITHMS.get(findingId));
+        assertThat(nodes.get(0)).isInstanceOf(MessageDigest.class);
+        assertThat(nodes.get(0).asString()).isEqualTo("SHA512");
     }
 }

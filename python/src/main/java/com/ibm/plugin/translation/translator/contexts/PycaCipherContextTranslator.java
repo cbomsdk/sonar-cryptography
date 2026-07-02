@@ -42,9 +42,12 @@ import com.ibm.mapper.model.mode.CBC;
 import com.ibm.mapper.model.mode.CCM;
 import com.ibm.mapper.model.mode.CFB;
 import com.ibm.mapper.model.mode.CTR;
+import com.ibm.mapper.model.mode.EAX;
 import com.ibm.mapper.model.mode.ECB;
 import com.ibm.mapper.model.mode.GCM;
 import com.ibm.mapper.model.mode.GCMSIV;
+import com.ibm.mapper.model.mode.KW;
+import com.ibm.mapper.model.mode.KWP;
 import com.ibm.mapper.model.mode.OCB;
 import com.ibm.mapper.model.mode.OFB;
 import com.ibm.mapper.model.mode.SIV;
@@ -86,9 +89,13 @@ public final class PycaCipherContextTranslator implements IContextTranslation<Tr
             }
             return pycaCipherMapper.parse(value.asString(), detectionLocation).map(i -> i);
         } else if (value instanceof ValueAction<Tree>
-                && detectionContext instanceof DetectionContext context
-                && context.get("kind").map(k -> k.equals("padding")).orElse(false) // padding case
-        ) {
+                && detectionContext instanceof DetectionContext context) {
+            if (context.get("kind").map(k -> k.equals("algorithm")).orElse(false)) {
+                return pycaCipherMapper.parse(value.asString(), detectionLocation).map(i -> i);
+            }
+            if (!context.get("kind").map(k -> k.equals("padding")).orElse(false)) {
+                return Optional.empty();
+            }
             return switch (value.asString().toUpperCase().trim()) {
                 case "PKCS7" -> Optional.of(new PKCS7(detectionLocation));
                 case "ANSIX923" -> Optional.of(new ANSIX923(detectionLocation));
@@ -103,6 +110,12 @@ public final class PycaCipherContextTranslator implements IContextTranslation<Tr
                 case "CFB" -> Optional.of(new CFB(detectionLocation));
                 case "CFB8" -> Optional.of(new CFB(8, detectionLocation));
                 case "GCM" -> Optional.of(new GCM(detectionLocation));
+                case "CCM" -> Optional.of(new CCM(detectionLocation));
+                case "EAX" -> Optional.of(new EAX(detectionLocation));
+                case "OCB" -> Optional.of(new OCB(detectionLocation));
+                case "SIV" -> Optional.of(new SIV(detectionLocation));
+                case "KW" -> Optional.of(new KW(detectionLocation));
+                case "KWP" -> Optional.of(new KWP(detectionLocation));
                 case "XTS" -> Optional.of(new XTS(detectionLocation));
                 case "ECB" -> Optional.of(new ECB(detectionLocation));
                 default -> Optional.empty();

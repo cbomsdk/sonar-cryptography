@@ -32,6 +32,7 @@ import com.ibm.plugin.rules.detection.hash.PycaHash;
 import com.ibm.plugin.rules.detection.kdf.PycaKDF;
 import com.ibm.plugin.rules.detection.keyagreement.PycaKeyAgreement;
 import com.ibm.plugin.rules.detection.mac.PycaMAC;
+import com.ibm.plugin.rules.detection.pycryptodome.PycryptodomeDetectionRules;
 import com.ibm.plugin.rules.detection.symmetric.PycaCipher;
 import com.ibm.plugin.rules.detection.wrapping.PycaWrapping;
 import java.util.List;
@@ -61,7 +62,8 @@ public final class PythonDetectionRules {
                         PycaWrapping.rules().stream(),
                         PycaKDF.rules().stream(),
                         PycaHash.topLevelRules().stream(),
-                        PycaFernet.rules().stream())
+                        PycaFernet.rules().stream(),
+                        PycryptodomeDetectionRules.rules().stream())
                 .flatMap(i -> i)
                 .toList();
     }

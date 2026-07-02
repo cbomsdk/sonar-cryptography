@@ -28,7 +28,6 @@ import com.ibm.engine.rule.IBundle;
 import com.ibm.mapper.IContextTranslation;
 import com.ibm.mapper.model.EllipticCurveAlgorithm;
 import com.ibm.mapper.model.INode;
-import com.ibm.mapper.model.ProbabilisticSignatureScheme;
 import com.ibm.mapper.model.Signature;
 import com.ibm.mapper.model.algorithms.ECDSA;
 import com.ibm.mapper.model.algorithms.MGF1;
@@ -61,8 +60,7 @@ public final class PycaSignatureContextTranslator implements IContextTranslation
                 case "RSA" -> {
                     if (detectionContext instanceof DetectionContext context
                             && context.get("kind").map(k -> k.equals("PSS")).orElse(false)) {
-                        yield Optional.of(
-                                new RSA(ProbabilisticSignatureScheme.class, detectionLocation));
+                        yield Optional.of(new RSAssaPSS(detectionLocation));
                     }
                     yield Optional.of(new RSA(Signature.class, detectionLocation));
                 }

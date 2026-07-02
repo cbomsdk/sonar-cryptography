@@ -31,6 +31,7 @@ import com.ibm.mapper.model.Cipher;
 import com.ibm.mapper.model.INode;
 import com.ibm.mapper.model.algorithms.CMAC;
 import com.ibm.mapper.model.algorithms.HMAC;
+import com.ibm.mapper.model.algorithms.KMAC;
 import com.ibm.mapper.model.algorithms.Poly1305;
 import com.ibm.mapper.utils.DetectionLocation;
 import java.util.Optional;
@@ -79,6 +80,11 @@ public final class PycaMacContextTranslator implements IContextTranslation<Tree>
             if (action.asString().equalsIgnoreCase("poly1305")) {
                 return Optional.of(new HMAC(new Poly1305(detectionLocation)));
             }
+            return switch (action.asString().toUpperCase().trim()) {
+                case "KMAC128" -> Optional.of(new KMAC(128, detectionLocation));
+                case "KMAC256" -> Optional.of(new KMAC(256, detectionLocation));
+                default -> Optional.empty();
+            };
         }
         return Optional.empty();
     }

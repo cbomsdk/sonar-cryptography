@@ -21,14 +21,21 @@ package com.ibm.mapper.mapper.pyca;
 
 import com.ibm.mapper.mapper.IMapper;
 import com.ibm.mapper.model.MessageDigest;
+import com.ibm.mapper.model.algorithms.KangarooTwelve;
+import com.ibm.mapper.model.algorithms.Keccak;
+import com.ibm.mapper.model.algorithms.MD2;
+import com.ibm.mapper.model.algorithms.MD4;
 import com.ibm.mapper.model.algorithms.MD5;
 import com.ibm.mapper.model.algorithms.Poly1305;
+import com.ibm.mapper.model.algorithms.RIPEMD;
 import com.ibm.mapper.model.algorithms.SHA;
 import com.ibm.mapper.model.algorithms.SHA2;
 import com.ibm.mapper.model.algorithms.SHA3;
 import com.ibm.mapper.model.algorithms.SM3;
+import com.ibm.mapper.model.algorithms.TupleHash;
 import com.ibm.mapper.model.algorithms.blake.BLAKE2b;
 import com.ibm.mapper.model.algorithms.blake.BLAKE2s;
+import com.ibm.mapper.model.algorithms.shake.CSHAKE;
 import com.ibm.mapper.model.algorithms.shake.SHAKE;
 import com.ibm.mapper.utils.DetectionLocation;
 import java.util.Optional;
@@ -60,7 +67,19 @@ public final class PycaDigestMapper implements IMapper {
             case "SHA3_512" -> Optional.of(new SHA3(512, detectionLocation));
             case "SHAKE128", "SHAKE_128" -> Optional.of(new SHAKE(128, detectionLocation));
             case "SHAKE256", "SHAKE_256" -> Optional.of(new SHAKE(256, detectionLocation));
+            case "CSHAKE128", "CSHAKE_128" -> Optional.of(new CSHAKE(128, detectionLocation));
+            case "CSHAKE256", "CSHAKE_256" -> Optional.of(new CSHAKE(256, detectionLocation));
+            case "TUPLEHASH128", "TUPLEHASH_128" ->
+                    Optional.of(new TupleHash(128, detectionLocation));
+            case "TUPLEHASH256", "TUPLEHASH_256" ->
+                    Optional.of(new TupleHash(256, detectionLocation));
+            case "KANGAROOTWELVE" -> Optional.of(new KangarooTwelve(detectionLocation));
+            case "MD2" -> Optional.of(new MD2(detectionLocation));
+            case "MD4" -> Optional.of(new MD4(detectionLocation));
             case "MD5" -> Optional.of(new MD5(detectionLocation));
+            case "RIPEMD", "RIPEMD160", "RIPEMD_160" ->
+                    Optional.of(new RIPEMD(160, detectionLocation));
+            case "KECCAK" -> Optional.of(new Keccak(detectionLocation));
             case "BLAKE2B" -> Optional.of(new BLAKE2b(false, detectionLocation));
             case "BLAKE2S" -> Optional.of(new BLAKE2s(false, detectionLocation));
             case "SM3" -> Optional.of(new SM3(detectionLocation));

@@ -88,6 +88,16 @@ public final class PycaPrivateKeyContextTranslator implements IContextTranslatio
                     .map(
                             str ->
                                     switch (str.toUpperCase().trim()) {
+                                        case "P-192", "NIST P-192" ->
+                                                new Secp192r1(detectionLocation);
+                                        case "P-224", "NIST P-224" ->
+                                                new Secp224r1(detectionLocation);
+                                        case "P-256", "NIST P-256", "PRIME256V1" ->
+                                                new Secp256r1(detectionLocation);
+                                        case "P-384", "NIST P-384" ->
+                                                new Secp384r1(detectionLocation);
+                                        case "P-521", "NIST P-521" ->
+                                                new Secp521r1(detectionLocation);
                                         case "SECP256R1" -> new Secp256r1(detectionLocation);
                                         case "SECP384R1" -> new Secp384r1(detectionLocation);
                                         case "SECP521R1" -> new Secp521r1(detectionLocation);
